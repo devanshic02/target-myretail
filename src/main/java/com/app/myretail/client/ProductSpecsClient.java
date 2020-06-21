@@ -2,10 +2,12 @@ package com.app.myretail.client;
 
 
 import com.app.myretail.client.model.ProductSpecsResponse;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.app.myretail.exception.ProductNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
+
+import java.util.Optional;
 
 @Configuration
 public class ProductSpecsClient {
@@ -21,11 +23,15 @@ public class ProductSpecsClient {
         this.restTemplate = restTemplate;
     }
 
-    public ProductSpecsResponse getProductSpecs(String productId) {
-        return restTemplate.getForObject(
-                getUrl(productId),
-                ProductSpecsResponse.class
-        );
+    public Optional<ProductSpecsResponse> getProductSpecs(String productId) {
+        try {
+            return Optional.ofNullable(restTemplate.getForObject(
+                    getUrl(productId),
+                    ProductSpecsResponse.class
+            ));
+        } catch (Exception e) {
+            throw new ProductNotFoundException("Product Not Found - " + e.getMessage());
+        }
     }
 
     private String getUrl(String productId) {

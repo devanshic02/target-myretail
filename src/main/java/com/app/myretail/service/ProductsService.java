@@ -6,6 +6,8 @@ import com.app.myretail.contracts.ProductInfoRequest;
 import com.app.myretail.contracts.ProductInfoResponse;
 import com.app.myretail.contracts.ProductPricing;
 import com.app.myretail.entity.ProductsEntity;
+import com.app.myretail.exception.ProductNotFoundException;
+import com.app.myretail.exception.UnhandledException;
 import com.app.myretail.resource.ProductsResource;
 import lombok.Data;
 import lombok.experimental.Accessors;
@@ -29,15 +31,18 @@ public @Data class ProductsService {
     public ProductInfoResponse getProductInfo(String id) {
         ProductInfoResponse productInfoResponse = new ProductInfoResponse();
         Optional<ProductsEntity> productsEntity = productsResource.getProductInfo(id);
-        ProductSpecsResponse productSpecsResponse = productSpecsClient.getProductSpecs(id);
+        Optional<ProductSpecsResponse> productSpecsResponse = productSpecsClient.getProductSpecs(id);
 
         productInfoResponse
                 .id(Long.valueOf(id))
                 .name(productSpecsResponse
-                        .getProductSpecification()
-                        .getProductItem()
-                        .getProductDescription()
-                        .getTitle()
+                        .map(response -> response
+                                .getProductSpecification()
+                                .getProductItem()
+                                .getProductDescription()
+                                .getTitle()
+                        )
+                        .orElseThrow(() -> new ProductNotFoundException("Product info is inaccurate. Item Description missing"))
                 );
 
         productsEntity.ifPresent(value -> productInfoResponse
@@ -53,8 +58,9 @@ public @Data class ProductsService {
     }
 
     public void updateProductInfo(ProductInfoRequest productInfoRequest) {
-        productsResource.updateProductInfo(
-                generateProductsEntityFroProductsInfoRequest(productInfoRequest)
-        );
+        productSpecsClient.getProductSpecs(String.valueOf(productInfoRequest.getProductId()))
+                .ifPresent(response -> productsResource.updateProductInfo(
+                        generateProductsEntityFroProductsInfoRequest(productInfoRequest)
+                ));
     }
 }
